@@ -33,8 +33,8 @@ browser = ["playwright>=1.40"]
 llm = ["openai>=1.0"]
 
 [project.urls]
-Homepage = "https://github.com/your-org/freescrape"
-Repository = "https://github.com/your-org/freescrape"
+Homepage = "https://github.com/mu16888/freescrape"
+Repository = "https://github.com/mu16888/freescrape"
 
 [project.scripts]
 freescrape = "freescrape.cli:cli"
