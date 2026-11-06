@@ -1,0 +1,13 @@
+# Core (required)
+click>=8.1
+httpx>=0.27
+trafilatura>=1.6
+beautifulsoup4>=4.12
+lxml>=5.0
+rich>=13.0
+
+# Optional: real-browser automation (`browser` commands)
+playwright>=1.40
+
+# Optional: AI features (`discover`, AI extraction). Any OpenAI-compatible endpoint.
+openai>=1.0

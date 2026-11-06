@@ -1,0 +1,11 @@
+{
+  "name": "github_trending",
+  "description": "Today's trending repositories on GitHub",
+  "url": "https://github.com/trending",
+  "item_selector": "article.Box-row",
+  "fields": [
+    { "name": "repo", "selector": "h2 a", "attr": "text" },
+    { "name": "url", "selector": "h2 a", "attr": "href" },
+    { "name": "description", "selector": "p.col-9", "attr": "text" }
+  ]
+}

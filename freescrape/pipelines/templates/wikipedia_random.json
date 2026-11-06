@@ -1,0 +1,9 @@
+{
+  "name": "wikipedia_random",
+  "description": "Extract the lead section + first headings of a Wikipedia article",
+  "url": "https://en.wikipedia.org/wiki/Web_scraping",
+  "item_selector": "div.mw-parser-output > p",
+  "fields": [
+    { "name": "paragraph", "selector": "p", "attr": "text" }
+  ]
+}

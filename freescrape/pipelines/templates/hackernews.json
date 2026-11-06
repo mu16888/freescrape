@@ -1,0 +1,11 @@
+{
+  "name": "hackernews",
+  "description": "Front-page stories from Hacker News (news.ycombinator.com)",
+  "url": "https://news.ycombinator.com/",
+  "item_selector": "tr.athing",
+  "fields": [
+    { "name": "title", "selector": "span.titleline > a", "attr": "text" },
+    { "name": "link", "selector": "span.titleline > a", "attr": "href" },
+    { "name": "score", "selector": "td.subtext span.score", "attr": "text" }
+  ]
+}
