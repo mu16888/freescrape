@@ -17,6 +17,7 @@ def _fetch(url: str, proxy: Optional[str], timeout: int, user_agent: str) -> tup
         transport=transport,
         timeout=timeout,
         follow_redirects=True,
+        trust_env=False,
         headers={"User-Agent": user_agent, "Accept-Language": "en-US,en;q=0.9"},
     ) as client:
         resp = client.get(url)

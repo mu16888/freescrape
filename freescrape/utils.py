@@ -12,6 +12,17 @@ from rich.table import Table
 console = Console()
 
 
+def _write_stdout(text: str) -> None:
+    """Write raw text to stdout via the binary buffer.
+
+    Bypasses text-mode newline translation (Windows turns '\\n' into '\\r\\n'),
+    so machine-readable JSON stays valid when piped or redirected.
+    """
+    buf = sys.stdout.buffer
+    buf.write((text + "\n").encode("utf-8"))
+    buf.flush()
+
+
 def out(
     data: Any,
     *,
@@ -35,31 +46,30 @@ def out(
 
     if as_json or pretty:
         text = json.dumps(data, ensure_ascii=False, indent=2 if pretty else None)
-        console.print(text)
+        _write_stdout(text)
         return
 
     if humanizer is not None:
         console.print(humanizer(data))
     else:
-        console.print(json.dumps(data, ensure_ascii=False, indent=2))
+        _write_stdout(json.dumps(data, ensure_ascii=False, indent=2))
 
 
 def _write_file(path: str, data: Any, as_json: bool, pretty: bool, humanizer) -> None:
     p = Path(path)
     suffix = p.suffix.lower()
     if suffix in (".json",) or as_json:
-        p.write_text(json.dumps(data, ensure_ascii=False, indent=2 if (pretty or suffix == ".json") else None), encoding="utf-8")
+        content = json.dumps(data, ensure_ascii=False, indent=2 if (pretty or suffix == ".json") else None)
+        p.write_bytes((content + "\n").encode("utf-8"))
     elif suffix in (".md", ".markdown"):
-        if humanizer is not None:
-            p.write_text(humanizer(data), encoding="utf-8")
-        else:
-            p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        content = humanizer(data) if humanizer is not None else json.dumps(data, ensure_ascii=False, indent=2)
+        p.write_bytes((content if isinstance(content, str) else json.dumps(content, ensure_ascii=False, indent=2)).encode("utf-8"))
     elif suffix in (".csv",):
-        p.write_text(_to_csv(data), encoding="utf-8")
+        p.write_bytes(_to_csv(data).encode("utf-8"))
     else:
         # default: human text if available, else json
-        content = humanizer(data) if humanizer else json.dumps(data, ensure_ascii=False, indent=2)
-        p.write_text(content, encoding="utf-8")
+        content = humanizer(data) if humanizer is not None else json.dumps(data, ensure_ascii=False, indent=2)
+        p.write_bytes((content if isinstance(content, str) else json.dumps(content, ensure_ascii=False, indent=2)).encode("utf-8"))
 
 
 def _to_csv(data: Any) -> str:
@@ -90,5 +100,5 @@ def human_table(rows: list, columns: Dict[str, str], title: str = "") -> str:
 
 def fatal(msg: str, code: int = 1) -> None:
     """Print an error to stderr and exit."""
-    console.print(f"[red]error:[/red] {msg}", file=sys.stderr)
+    sys.stderr.write(f"error: {msg}\n")
     raise SystemExit(code)

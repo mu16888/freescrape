@@ -5,8 +5,8 @@ no proxy network, no telemetry. See README.md for capability boundaries.
 """
 from __future__ import annotations
 
+import functools
 import json
-import sys
 
 import click
 from rich.console import Console
@@ -19,20 +19,23 @@ console = Console()
 
 
 # --------------------------------------------------------------------------- #
-# Root group
+# Output options as a reusable decorator so every command accepts them in the
+# natural position (e.g. `freescrape scrape URL --json`).
 # --------------------------------------------------------------------------- #
-@click.group()
-@click.version_option(__version__, "-V", "--version", message="freescrape %(version)s")
-@click.option("--json", "as_json", is_flag=True, help="Output raw JSON (compact).")
-@click.option("--pretty", is_flag=True, help="Output pretty JSON.")
-@click.option("-o", "--output", default=None, help="Write result to a file (json/md/csv/txt by extension).")
-@click.pass_context
-def cli(ctx, as_json, pretty, output):
-    """FreeScrape — scrape, search, and extract web data from your terminal."""
-    ctx.ensure_object(dict)
-    ctx.obj["as_json"] = as_json
-    ctx.obj["pretty"] = pretty
-    ctx.obj["output"] = output
+def output_options(f):
+    @click.option("-o", "--output", default=None, help="Write result to a file (json/md/csv/txt by extension).")
+    @click.option("--pretty", is_flag=True, help="Output pretty JSON.")
+    @click.option("--json", "as_json", is_flag=True, help="Output raw JSON (compact).")
+    @click.pass_context
+    @functools.wraps(f)
+    def wrapper(ctx, as_json, pretty, output, *args, **kwargs):
+        ctx.ensure_object(dict)
+        ctx.obj["as_json"] = as_json
+        ctx.obj["pretty"] = pretty
+        ctx.obj["output"] = output
+        return f(ctx, *args, **kwargs)
+
+    return wrapper
 
 
 def _emit(ctx, data, humanizer=None):
@@ -43,6 +46,15 @@ def _emit(ctx, data, humanizer=None):
         output_path=ctx.obj.get("output"),
         humanizer=humanizer,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Root group
+# --------------------------------------------------------------------------- #
+@click.group()
+@click.version_option(__version__, "-V", "--version", message="freescrape %(version)s")
+def cli():
+    """FreeScrape — scrape, search, and extract web data from your terminal."""
 
 
 # --------------------------------------------------------------------------- #
@@ -76,11 +88,10 @@ def config():
 
 
 @config.command("list")
-@click.pass_context
+@output_options
 def config_list(ctx):
     """Show the current configuration."""
     cfg = load_config()
-    # Mask secrets
     safe = dict(cfg)
     if safe.get("llm_api_key"):
         safe["llm_api_key"] = safe["llm_api_key"][:4] + "****"
@@ -89,7 +100,7 @@ def config_list(ctx):
 
 @config.command("get")
 @click.argument("key")
-@click.pass_context
+@output_options
 def config_get(ctx, key):
     """Get a single config value."""
     _emit(ctx, {key: get_key(key)}, lambda d: str(d.get(key)))
@@ -98,8 +109,7 @@ def config_get(ctx, key):
 @config.command("set")
 @click.argument("key")
 @click.argument("value")
-@click.pass_context
-def config_set(ctx, key, value):
+def config_set(key, value):
     """Set a config value (value is coerced: true/false->bool, digits->int)."""
     coerced = value
     if value.lower() in ("true", "false"):
@@ -121,7 +131,7 @@ def config_set(ctx, key, value):
 @click.option("--proxy", default=None, help="Override proxy for this call.")
 @click.option("--timeout", type=int, default=None, help="Request timeout (seconds).")
 @click.option("--html", "with_html", is_flag=True, help="Include raw HTML in output.")
-@click.pass_context
+@output_options
 def scrape(ctx, url, browser, proxy, timeout, with_html):
     """Scrape URL and extract markdown/text."""
     from freescrape.engines.http_scraper import scrape as do_scrape
@@ -146,7 +156,7 @@ def scrape(ctx, url, browser, proxy, timeout, with_html):
 @click.option("--engine", type=click.Choice(["ddg", "bing"]), default="ddg")
 @click.option("--max", "max_results", type=int, default=10)
 @click.option("--proxy", default=None)
-@click.pass_context
+@output_options
 def search(ctx, query, engine, max_results, proxy):
     """Search the web for free (DuckDuckGo/Bing). Returns {title,url,snippet}."""
     from freescrape.engines.search import search as do_search
@@ -165,7 +175,7 @@ def search(ctx, query, engine, max_results, proxy):
 @click.argument("query")
 @click.option("--engine", type=click.Choice(["ddg", "bing"]), default="ddg")
 @click.option("--max", "max_results", type=int, default=10)
-@click.pass_context
+@output_options
 def discover(ctx, query, engine, max_results):
     """AI-assisted discovery: search then rank/summarize via optional LLM."""
     from freescrape.engines.llm import discover as ai_discover
@@ -191,7 +201,7 @@ def browser():
 @click.option("--proxy", default=None)
 @click.option("--session", default=None, help="Named persistent profile (cookies survive).")
 @click.option("--wait", type=int, default=2, help="Seconds to wait after load.")
-@click.pass_context
+@output_options
 def browser_open(ctx, url, no_headless, keep_open, proxy, session, wait):
     """Open URL in a real browser and return a snapshot."""
     from freescrape.engines.browser_ctl import open_page
@@ -207,7 +217,7 @@ def browser_open(ctx, url, no_headless, keep_open, proxy, session, wait):
 @click.argument("url")
 @click.option("--proxy", default=None)
 @click.option("--session", default=None)
-@click.pass_context
+@output_options
 def browser_snapshot(ctx, url, proxy, session):
     """Return a snapshot (title, url, link count) of URL."""
     from freescrape.engines.browser_ctl import snapshot as do_snapshot
@@ -224,7 +234,7 @@ def browser_snapshot(ctx, url, proxy, session):
 @click.argument("path")
 @click.option("--proxy", default=None)
 @click.option("--session", default=None)
-@click.pass_context
+@output_options
 def browser_screenshot(ctx, url, path, proxy, session):
     """Save a screenshot of URL to PATH."""
     from freescrape.engines.browser_ctl import screenshot as do_shot
@@ -241,7 +251,7 @@ def browser_screenshot(ctx, url, path, proxy, session):
 @click.option("--selector", required=True, help="CSS selector to click.")
 @click.option("--proxy", default=None)
 @click.option("--session", default=None)
-@click.pass_context
+@output_options
 def browser_click(ctx, url, selector, proxy, session):
     """Load URL, click SELECTOR, return resulting snapshot."""
     from freescrape.engines.browser_ctl import click as do_click
@@ -259,7 +269,7 @@ def browser_click(ctx, url, selector, proxy, session):
 @click.option("--text", required=True)
 @click.option("--proxy", default=None)
 @click.option("--session", default=None)
-@click.pass_context
+@output_options
 def browser_type(ctx, url, selector, text, proxy, session):
     """Load URL, fill SELECTOR with TEXT, return snapshot."""
     from freescrape.engines.browser_ctl import type_text as do_type
@@ -276,7 +286,7 @@ def browser_type(ctx, url, selector, text, proxy, session):
 @click.option("--amount", type=int, default=1000)
 @click.option("--proxy", default=None)
 @click.option("--session", default=None)
-@click.pass_context
+@output_options
 def browser_scroll(ctx, url, amount, proxy, session):
     """Load URL and scroll by AMOUNT pixels."""
     from freescrape.engines.browser_ctl import scroll as do_scroll
@@ -298,7 +308,7 @@ def pipelines():
 
 @pipelines.command("search")
 @click.argument("term", required=False)
-@click.pass_context
+@output_options
 def pipelines_search(ctx, term):
     """List available pipelines, optionally filtered by TERM."""
     from freescrape.pipelines.registry import list_pipelines
@@ -311,7 +321,7 @@ def pipelines_search(ctx, term):
 
 @pipelines.command("info")
 @click.argument("name")
-@click.pass_context
+@output_options
 def pipelines_info(ctx, name):
     """Show a pipeline descriptor."""
     from freescrape.pipelines.registry import get_pipeline
@@ -325,7 +335,7 @@ def pipelines_info(ctx, name):
 @pipelines.command("run")
 @click.argument("name")
 @click.option("--max", "max_items", type=int, default=20)
-@click.pass_context
+@output_options
 def pipelines_run(ctx, name, max_items):
     """Execute a pipeline and extract structured items."""
     from freescrape.pipelines.registry import run_pipeline
@@ -347,7 +357,7 @@ def pipelines_run(ctx, name, max_items):
 # budget (free status)
 # --------------------------------------------------------------------------- #
 @cli.command()
-@click.pass_context
+@output_options
 def budget(ctx):
     """Show usage status. FreeScrape is 100% free — no credits, no billing."""
     _emit(
@@ -370,8 +380,7 @@ def budget(ctx):
 @cli.command("add")
 @click.argument("target", type=click.Choice(["mcp"]))
 @click.option("--client", type=click.Choice(["claude-code", "cursor", "generic"]), default="generic")
-@click.pass_context
-def add(ctx, target, client):
+def add(target, client):
     """Install FreeScrape into an AI coding agent as an MCP server."""
     if target != "mcp":
         fatal("only 'mcp' is supported")
@@ -379,19 +388,16 @@ def add(ctx, target, client):
     import sys
 
     exe = shutil.which("freescrape") or f"{sys.executable} -m freescrape"
+    parts = exe.split()
     snippet = {
         "mcpServers": {
-            "freescrape": {"command": exe.split()[0], "args": (exe.split()[1:] if len(exe.split()) > 1 else []) + ["mcp", "--stdio"]}
+            "freescrape": {"command": parts[0], "args": parts[1:] + ["mcp", "--stdio"]}
         }
     }
-    if client == "generic":
-        console.print("[bold]Add this to your MCP client config:[/bold]")
-        console.print_json(json.dumps(snippet, indent=2, ensure_ascii=False))
-        console.print("\nOr run directly: ")
-        console.print(f"  {exe} mcp --stdio")
-    else:
-        console.print(f"[green]For {client}:[/green] merge the following into its MCP config file, then restart the client.")
-        console.print_json(json.dumps(snippet, indent=2, ensure_ascii=False))
+    console.print("[bold]Add this to your MCP client config:[/bold]")
+    console.print_json(json.dumps(snippet, indent=2, ensure_ascii=False))
+    console.print("\nOr run directly:")
+    console.print(f"  {exe} mcp --stdio")
 
 
 # --------------------------------------------------------------------------- #
@@ -407,13 +413,6 @@ def mcp(stdio):
     from freescrape.mcp_server import serve
 
     serve()
-
-
-# --------------------------------------------------------------------------- #
-# Alias entry: `fs`
-# --------------------------------------------------------------------------- #
-def fs_main():
-    cli()
 
 
 if __name__ == "__main__":

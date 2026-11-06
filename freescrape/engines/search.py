@@ -17,7 +17,7 @@ def _http_get(url: str, proxy: Optional[str], timeout: int) -> str:
     import httpx  # type: ignore
 
     transport = httpx.HTTPTransport(proxy=proxy) if proxy else None
-    with httpx.Client(transport=transport, timeout=timeout, follow_redirects=True, headers=_HEADERS) as c:
+    with httpx.Client(transport=transport, timeout=timeout, follow_redirects=True, trust_env=False, headers=_HEADERS) as c:
         return c.get(url).text
 
 
