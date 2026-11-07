@@ -3,6 +3,8 @@
 [![tests](https://github.com/mu16888/freescrape/actions/workflows/test.yml/badge.svg)](https://github.com/mu16888/freescrape/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**📖 [简体中文说明 / Chinese README](README.zh-CN.md)**
+
 **A free, open-source web scraping CLI.** Scrape, search, and extract structured web
 data directly from your terminal — no paid account, no proxy network, no telemetry.
 
@@ -42,22 +44,32 @@ or accept that it may be blocked. This is a deliberate, honest trade-off.
 
 Requires **Python ≥ 3.10**.
 
+> **Distributed from source only.** FreeScrape is not published on PyPI yet, so
+> `pip install freescrape` will not install this project. Clone the repository instead.
+
 ```bash
+git clone https://github.com/mu16888/freescrape.git
+cd freescrape
+
 # Core (HTTP scraping + search + extraction)
-pip install freescrape
+pip install -e .
 
 # Optional: real-browser automation (`browser` commands)
-pip install "freescrape[browser]" && playwright install chromium
+pip install -e ".[browser]" && playwright install chromium
 
 # Optional: AI features (`discover`) — any OpenAI-compatible endpoint
-pip install "freescrape[llm]"
+pip install -e ".[llm]"
 ```
 
-Or run without installing:
+Or, once dependencies are installed, run straight from the source tree:
 
 ```bash
 python -m freescrape <command>
 ```
+
+An editable install (`-e .`) records an absolute path. If you move the project
+directory, re-run `pip install -e .` from the new location or the command will
+point at the old path.
 
 ---
 
