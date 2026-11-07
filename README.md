@@ -1,5 +1,6 @@
 # FreeScrape 🕸️
 
+[![tests](https://github.com/mu16888/freescrape/actions/workflows/test.yml/badge.svg)](https://github.com/mu16888/freescrape/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A free, open-source web scraping CLI.** Scrape, search, and extract structured web
